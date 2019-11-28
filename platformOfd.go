@@ -15,6 +15,7 @@ type platformOfd struct {
 
 type Receipt struct {
 	Products []Product
+	Link     string
 	Price    int
 	VatPrice int
 }
@@ -67,7 +68,15 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate string, endDa
 		//ch := d.Clone()
 		link := e.Attr("href")
 		log.Printf("Link to href: %s", link)
-		receipt, _ := pf.getCheck(c.Clone(), link)
+		products, _ := pf.getCheck(c.Clone(), link)
+
+		receipt := Receipt{
+			Products: products,
+			Link:     link,
+			Price:    0,
+			VatPrice: 0,
+		}
+
 		receipts = append(receipts, receipt)
 		/*ch.OnHTML("a.btn.btn-default.text-nowrap", func(e *colly.HTMLElement) {
 			link := e.Attr("href")
@@ -86,7 +95,7 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate string, endDa
 	return receipts, nil
 }
 
-func (pf *platformOfd) getCheck(c *colly.Collector, link string) (receipt Receipt, err error) {
+func (pf *platformOfd) getCheck(c *colly.Collector, link string) (product []Product, err error) {
 	c.OnHTML("div.check-product-name", func(e *colly.HTMLElement) {
 		productName := e.Text
 		log.Printf("ProductName: %s", productName)
@@ -96,8 +105,8 @@ func (pf *platformOfd) getCheck(c *colly.Collector, link string) (receipt Receip
 	link = strings.Replace(link, " ", "%20", -1)
 	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru%s", link))
 	if err != nil {
-		return receipt, err
+		return product, err
 	}
 
-	return receipt, nil
+	return product, nil
 }
