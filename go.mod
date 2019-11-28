@@ -1,4 +1,4 @@
-module PlatformOFD
+module github.com/antsupovsa/platformOfd
 
 go 1.13
 
