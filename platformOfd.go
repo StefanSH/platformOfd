@@ -5,6 +5,7 @@ import (
 	"github.com/gocolly/colly"
 	"log"
 	"strings"
+	"time"
 )
 
 type platformOfd struct {
@@ -35,7 +36,7 @@ func PlatformOfd(Username string, Password string) *platformOfd {
 	}
 }
 
-func (pf *platformOfd) GetReceipts(startDate string, endDate string) (receipts []Receipt, err error) {
+func (pf *platformOfd) GetReceipts(startDate time.Time, endDate time.Time) (receipts []Receipt, err error) {
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"),
 	)
@@ -63,12 +64,15 @@ func (pf *platformOfd) GetReceipts(startDate string, endDate string) (receipts [
 	return receipts, nil
 }
 
-func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate string, endDate string) (receipts []Receipt, err error) {
+func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, endDate time.Time) (receipts []Receipt, err error) {
 	c.OnHTML("#cheques-search-content > div > div > div > table > tbody > tr", func(e *colly.HTMLElement) {
 		//ch := d.Clone()
 		link := e.Attr("href")
 		log.Printf("Link to href: %s", link)
-		products, _ := pf.getCheck(c.Clone(), link)
+		pLink := strings.Split(link, "/")
+		//https://lk.platformaofd.ru/web/auth/cheques/details/33731507407/1574952176000/3755441948?date=28.11.2019+17%3A42
+		//https://lk.platformaofd.ru/web/noauth/cheque/id?id=33731507407&date=1574952176000&fp=3755441948
+		products, _ := pf.getCheck(c.Clone(), fmt.Sprintf("/web/noauth/cheque/id?id=%s&date=%s&fp=%s", pLink[4], pLink[5], pLink[6]))
 
 		receipt := Receipt{
 			Products: products,
@@ -78,16 +82,9 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate string, endDa
 		}
 
 		receipts = append(receipts, receipt)
-		/*ch.OnHTML("a.btn.btn-default.text-nowrap", func(e *colly.HTMLElement) {
-			link := e.Attr("href")
-			log.Printf("Link to check: %s", link)
-
-		})
-		link = strings.Replace(link, ":", "%3A", -1)
-		link = strings.Replace(link, " ", "%20", -1)
-		ch.Visit(fmt.Sprintf("https://lk.platformaofd.ru%s", link))*/
 	})
-	err = c.Visit("https://lk.platformaofd.ru/web/auth/cheques?start=27.11.2019+13%3A00&end=27.11.2019+13%3A00")
+	//https://lk.platformaofd.ru/web/auth/cheques?start=27.11.2019+13%3A00&end=27.11.2019+13%3A00
+	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru/web/auth/cheques?start=%s&end=%s", startDate.Format("02.01.2006+15%3A04"), endDate.Format("02.01.2006+15%3A04")))
 	if err != nil {
 		return receipts, err
 	}
