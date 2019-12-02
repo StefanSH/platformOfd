@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gocolly/colly"
 	"log"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -76,6 +77,7 @@ func (pf *platformOfd) GetReceipts(date time.Time) (receipts []Receipt, err erro
 }
 
 func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, endDate time.Time) (receipts []Receipt, err error) {
+	log.Println(url.QueryEscape(fmt.Sprintf("https://lk.platformaofd.ru/web/auth/cheques?start=%s&end=%s", startDate.Format("02.01.2006 15:04"), endDate.Format("02.01.2006 15:04"))))
 	c.OnHTML("#cheques-search-content > div > div > div > table > tbody > tr", func(e *colly.HTMLElement) {
 		link := e.Attr("href")
 
@@ -103,7 +105,7 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 		receipts = append(receipts, receipt)
 	})
 	//https://lk.platformaofd.ru/web/auth/cheques?start=27.11.2019+13%3A00&end=27.11.2019+13%3A00
-	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru/web/auth/cheques?start=%s&end=%s", startDate.Format("02.01.2006+15%3A04"), endDate.Format("02.01.2006+15%3A04")))
+	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru/web/auth/cheques?start=%s&end=%s", url.QueryEscape(startDate.Format("02.01.2006 15:04")), url.QueryEscape(endDate.Format("02.01.2006 15:04"))))
 	if err != nil {
 		return receipts, err
 	}
