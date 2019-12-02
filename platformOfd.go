@@ -58,8 +58,7 @@ func (pf *platformOfd) GetReceipts(date time.Time) (receipts []Receipt, err erro
 		for h := 1; h <= date.Hour(); h++ {
 			startDate = time.Date(date.Year(), date.Month(), date.Day(), h-1, 0, 0, 0, date.Location())
 			endDate = time.Date(date.Year(), date.Month(), date.Day(), h, 0, 0, 0, date.Location())
-
-			fmt.Printf("%s - %s", startDate.Format(time.RFC3339), endDate.Format(time.RFC3339))
+			receipts, err = pf.getChecksLink(c.Clone(), startDate, endDate)
 		}
 	})
 
