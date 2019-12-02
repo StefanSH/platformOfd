@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gocolly/colly"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -15,6 +16,9 @@ type platformOfd struct {
 }
 
 type Receipt struct {
+	ID       int
+	FP       string
+	Date     string
 	Products []Product
 	Link     string
 	Price    int
@@ -71,20 +75,25 @@ func (pf *platformOfd) GetReceipts(date time.Time) (receipts []Receipt, err erro
 }
 
 func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, endDate time.Time) (receipts []Receipt, err error) {
-
 	c.OnHTML("#cheques-search-content > div > div > div > table > tbody > tr", func(e *colly.HTMLElement) {
 		link := e.Attr("href")
 
 		if link == "/web/auth/cheques/reports" {
 			return
 		}
-
-		pLink := strings.Split(link, "/")
+		pLinkSource := strings.Split(link, "?")
+		pLink := strings.Split(pLinkSource[0], "/")
 		//https://lk.platformaofd.ru/web/auth/cheques/details/<id>/<date>/<fp>?date=28.11.2019+17%3A42
 		//https://lk.platformaofd.ru/web/noauth/cheque/id?id=<id>&date=<date>&fp=<fp>
-		products, _ := pf.getCheck(c.Clone(), fmt.Sprintf("/web/noauth/cheque/id?id=%s&date=%s&fp=%s", pLink[4], pLink[5], pLink[6]))
-
+		products, _ := pf.getCheck(c.Clone(), fmt.Sprintf("/web/noauth/cheque/id?id=%s&date=%s&fp=%s", pLink[5], pLink[6], pLink[7]))
+		id, err := strconv.Atoi(pLink[5])
+		if err != nil {
+			log.Printf("%v", err)
+		}
 		receipt := Receipt{
+			ID:       id,
+			FP:       pLink[7],
+			Date:     pLink[6],
 			Products: products,
 			Link:     link,
 			Price:    0,
@@ -104,7 +113,14 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 func (pf *platformOfd) getCheck(c *colly.Collector, link string) (product []Product, err error) {
 	c.OnHTML("div.check-product-name", func(e *colly.HTMLElement) {
 		productName := e.Text
-		log.Printf("ProductName: %s", productName)
+		pr := Product{
+			Name:     productName,
+			Quantity: 0,
+			Price:    0,
+			Vat:      0,
+			VatPrice: 0,
+		}
+		product = append(product, pr)
 	})
 
 	link = strings.Replace(link, ":", "%3A", -1)
