@@ -73,9 +73,12 @@ func (pf *platformOfd) GetReceipts(date time.Time) (receipts []Receipt, err erro
 func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, endDate time.Time) (receipts []Receipt, err error) {
 
 	c.OnHTML("#cheques-search-content > div > div > div > table > tbody > tr", func(e *colly.HTMLElement) {
-		//ch := d.Clone()
 		link := e.Attr("href")
-		log.Printf("Link to href: %s", link)
+
+		if link == "/web/auth/cheques/reports" {
+			return
+		}
+
 		pLink := strings.Split(link, "/")
 		//https://lk.platformaofd.ru/web/auth/cheques/details/<id>/<date>/<fp>?date=28.11.2019+17%3A42
 		//https://lk.platformaofd.ru/web/noauth/cheque/id?id=<id>&date=<date>&fp=<fp>
@@ -87,7 +90,6 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 			Price:    0,
 			VatPrice: 0,
 		}
-
 		receipts = append(receipts, receipt)
 	})
 	//https://lk.platformaofd.ru/web/auth/cheques?start=27.11.2019+13%3A00&end=27.11.2019+13%3A00
