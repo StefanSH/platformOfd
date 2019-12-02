@@ -36,7 +36,7 @@ func PlatformOfd(Username string, Password string) *platformOfd {
 	}
 }
 
-func (pf *platformOfd) GetReceipts(startDate time.Time, endDate time.Time) (receipts []Receipt, err error) {
+func (pf *platformOfd) GetReceipts(date time.Time) (receipts []Receipt, err error) {
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"),
 	)
@@ -53,7 +53,14 @@ func (pf *platformOfd) GetReceipts(startDate time.Time, endDate time.Time) (rece
 		if err != nil {
 			log.Fatal(err)
 		}
-		receipts, err = pf.getChecksLink(c.Clone(), startDate, endDate)
+		startDate := time.Time{}
+		endDate := time.Time{}
+		for h := 1; h <= date.Hour(); h++ {
+			startDate = time.Date(date.Year(), date.Month(), date.Day(), h-1, 0, 0, 0, date.Location())
+			endDate = time.Date(date.Year(), date.Month(), date.Day(), h, 0, 0, 0, date.Location())
+
+			fmt.Printf("%s - %s", startDate.Format(time.RFC3339), endDate.Format(time.RFC3339))
+		}
 	})
 
 	err = c.Visit("https://lk.platformaofd.ru/web/login")
@@ -65,13 +72,14 @@ func (pf *platformOfd) GetReceipts(startDate time.Time, endDate time.Time) (rece
 }
 
 func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, endDate time.Time) (receipts []Receipt, err error) {
+
 	c.OnHTML("#cheques-search-content > div > div > div > table > tbody > tr", func(e *colly.HTMLElement) {
 		//ch := d.Clone()
 		link := e.Attr("href")
 		log.Printf("Link to href: %s", link)
 		pLink := strings.Split(link, "/")
-		//https://lk.platformaofd.ru/web/auth/cheques/details/33731507407/1574952176000/3755441948?date=28.11.2019+17%3A42
-		//https://lk.platformaofd.ru/web/noauth/cheque/id?id=33731507407&date=1574952176000&fp=3755441948
+		//https://lk.platformaofd.ru/web/auth/cheques/details/<id>/<date>/<fp>?date=28.11.2019+17%3A42
+		//https://lk.platformaofd.ru/web/noauth/cheque/id?id=<id>&date=<date>&fp=<fp>
 		products, _ := pf.getCheck(c.Clone(), fmt.Sprintf("/web/noauth/cheque/id?id=%s&date=%s&fp=%s", pLink[4], pLink[5], pLink[6]))
 
 		receipt := Receipt{
