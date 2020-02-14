@@ -19,6 +19,7 @@ type platformOfd struct {
 type Receipt struct {
 	ID       int
 	FP       string
+	FD       string
 	Date     string
 	Products []Product
 	Link     string
@@ -90,6 +91,7 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 		//https://lk.platformaofd.ru/web/noauth/cheque/id?id=<id>&date=<date>&fp=<fp>
 		cLink := fmt.Sprintf("/web/noauth/cheque/id?id=%s&date=%s&fp=%s", pLink[5], pLink[6], pLink[7])
 		products, _ := pf.getCheck(c.Clone(), cLink)
+		fd, _ := pf.getFd(c.Clone(), cLink)
 		id, err := strconv.Atoi(pLink[5])
 		if err != nil {
 			log.Printf("%v", err)
@@ -97,6 +99,7 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 		receipt := Receipt{
 			ID:       id,
 			FP:       pLink[7],
+			FD:       fd,
 			Date:     pLink[6],
 			Products: products,
 			Link:     fmt.Sprintf("https://lk.platformaofd.ru%s", cLink),
@@ -112,6 +115,14 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 	}
 
 	return receipts, nil
+}
+
+func (pf *platformOfd) getFd(c *colly.Collector, link string) (fd string, err error) {
+	c.OnHTML("div.check-qr > img", func(e *colly.HTMLElement) {
+		fd = e.Text
+	})
+
+	return fd, nil
 }
 
 func (pf *platformOfd) getCheck(c *colly.Collector, link string) (product []Product, err error) {
