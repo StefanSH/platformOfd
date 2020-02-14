@@ -119,9 +119,12 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 
 func (pf *platformOfd) getFd(c *colly.Collector, link string) (fd string, err error) {
 	c.OnHTML("div.check-qr > img", func(e *colly.HTMLElement) {
-		fd = e.Text
+		fd = e.Attr("src")
 	})
-
+	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru%s", link))
+	if err != nil {
+		return "", err
+	}
 	return fd, nil
 }
 
