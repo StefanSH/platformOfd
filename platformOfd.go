@@ -103,18 +103,23 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 			log.Printf("%v", err)
 		}
 
-		totalPrice, err := strconv.ParseFloat(products[0].TotalPrice, 64)
-		receipt := Receipt{
-			ID:       id,
-			FP:       pLink[7],
-			FD:       products[0].FD,
-			Date:     pLink[6],
-			Products: products,
-			Link:     fmt.Sprintf("https://lk.platformaofd.ru%s", cLink),
-			Price:    int(totalPrice * float64(100)),
-			VatPrice: 0,
+		if len(products) > 0 {
+			totalPrice, err := strconv.ParseFloat(products[0].TotalPrice, 64)
+			if err != nil {
+				log.Printf("%v", err)
+			}
+			receipt := Receipt{
+				ID:       id,
+				FP:       pLink[7],
+				FD:       products[0].FD,
+				Date:     pLink[6],
+				Products: products,
+				Link:     fmt.Sprintf("https://lk.platformaofd.ru%s", cLink),
+				Price:    int(totalPrice * float64(100)),
+				VatPrice: 0,
+			}
+			receipts = append(receipts, receipt)
 		}
-		receipts = append(receipts, receipt)
 	})
 	//https://lk.platformaofd.ru/web/auth/cheques?start=27.11.2019+13%3A00&end=27.11.2019+13%3A00
 	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru/web/auth/cheques?start=%s&end=%s", url.QueryEscape(startDate.Format("02.01.2006 15:04")), url.QueryEscape(endDate.Format("02.01.2006 15:04"))))
