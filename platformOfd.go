@@ -1,4 +1,4 @@
-package platfolmOfd
+package platformOfd
 
 import (
 	"fmt"
