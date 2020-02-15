@@ -1,4 +1,4 @@
-package platformOfd
+package platfolmOfd
 
 import (
 	"fmt"
@@ -28,11 +28,16 @@ type Receipt struct {
 }
 
 type Product struct {
-	Name     string
-	Quantity int
-	Price    int
-	Vat      int
-	VatPrice int
+	Name       string
+	Quantity   int
+	Price      int
+	Vat        int
+	VatPrice   int
+	TotalPrice string
+	FP         string
+	FD         string
+	FN         string
+	Time       string
 }
 
 func PlatformOfd(Username string, Password string) *platformOfd {
@@ -80,6 +85,7 @@ func (pf *platformOfd) GetReceipts(date time.Time) (receipts []Receipt, err erro
 func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, endDate time.Time) (receipts []Receipt, err error) {
 	log.Println(url.QueryEscape(fmt.Sprintf("https://lk.platformaofd.ru/web/auth/cheques?start=%s&end=%s", startDate.Format("02.01.2006 15:04"), endDate.Format("02.01.2006 15:04"))))
 	c.OnHTML("#cheques-search-content > div > div > div > table > tbody > tr", func(e *colly.HTMLElement) {
+		check := c.Clone()
 		link := e.Attr("href")
 
 		if link == "/web/auth/cheques/reports" {
@@ -90,20 +96,22 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 		//https://lk.platformaofd.ru/web/auth/cheques/details/<id>/<date>/<fp>?date=28.11.2019+17%3A42
 		//https://lk.platformaofd.ru/web/noauth/cheque/id?id=<id>&date=<date>&fp=<fp>
 		cLink := fmt.Sprintf("/web/noauth/cheque/id?id=%s&date=%s&fp=%s", pLink[5], pLink[6], pLink[7])
-		products, _ := pf.getCheck(c.Clone(), cLink)
-		fd, _ := pf.getFd(c.Clone(), cLink)
+		products, _ := pf.getCheck(check, cLink)
+		//fd, _ := pf.getFd(check, cLink)
 		id, err := strconv.Atoi(pLink[5])
 		if err != nil {
 			log.Printf("%v", err)
 		}
+
+		totalPrice, err := strconv.ParseFloat(products[0].TotalPrice, 64)
 		receipt := Receipt{
 			ID:       id,
 			FP:       pLink[7],
-			FD:       fd,
+			FD:       products[0].FD,
 			Date:     pLink[6],
 			Products: products,
 			Link:     fmt.Sprintf("https://lk.platformaofd.ru%s", cLink),
-			Price:    0,
+			Price:    int(totalPrice * float64(100)),
 			VatPrice: 0,
 		}
 		receipts = append(receipts, receipt)
@@ -118,7 +126,8 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 }
 
 func (pf *platformOfd) getFd(c *colly.Collector, link string) (fd string, err error) {
-	c.OnHTML("div.check-qr > img", func(e *colly.HTMLElement) {
+	c.OnHTML("div.check-product-name", func(e *colly.HTMLElement) {
+		fmt.Println(e.Text)
 		fd = e.Attr("src")
 	})
 	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru%s", link))
@@ -129,16 +138,28 @@ func (pf *platformOfd) getFd(c *colly.Collector, link string) (fd string, err er
 }
 
 func (pf *platformOfd) getCheck(c *colly.Collector, link string) (product []Product, err error) {
-	c.OnHTML("div.check-product-name", func(e *colly.HTMLElement) {
-		productName := e.Text
-		pr := Product{
-			Name:     productName,
-			Quantity: 0,
-			Price:    0,
-			Vat:      0,
-			VatPrice: 0,
+	c.OnHTML("div", func(e *colly.HTMLElement) {
+		pr := Product{}
+		e.ForEach("div.check-product-name", func(i int, e *colly.HTMLElement) {
+			productName := e.Text
+			pr.Name = productName
+		})
+		e.ForEach("div.check-qr>img", func(i int, e *colly.HTMLElement) {
+			u, err := url.Parse(e.Attr("src"))
+			if err != nil {
+				log.Println(err)
+			}
+
+			query := u.Query()
+			pr.FP = query["fp"][0]
+			pr.FN = query["fn"][0]
+			pr.FD = query["i"][0]
+			pr.TotalPrice = query["s"][0]
+			pr.Time = query["t"][0]
+		})
+		if pr.Name != "" {
+			product = append(product, pr)
 		}
-		product = append(product, pr)
 	})
 
 	link = strings.Replace(link, ":", "%3A", -1)
