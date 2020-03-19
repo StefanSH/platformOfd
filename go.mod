@@ -1,4 +1,4 @@
-module github.com/antsupovsa/platformOfd
+module github.com/PharmaSpace/platformOfd
 
 go 1.13
 
