@@ -83,7 +83,7 @@ func (pf *platformOfd) GetReceipts(date time.Time) (receipts []Receipt, err erro
 }
 
 func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, endDate time.Time) (receipts []Receipt, err error) {
-	log.Println(url.QueryEscape(fmt.Sprintf("https://lk.platformaofd.ru/web/auth/cheques?start=%s&end=%s", startDate.Format("02.01.2006 15:04"), endDate.Format("02.01.2006 15:04"))))
+	//log.Println(url.QueryEscape(fmt.Sprintf("https://lk.platformaofd.ru/web/auth/cheques?start=%s&end=%s", startDate.Format("02.01.2006 15:04"), endDate.Format("02.01.2006 15:04"))))
 	c.OnHTML("#cheques-search-content > div > div > div > table > tbody > tr", func(e *colly.HTMLElement) {
 		check := c.Clone()
 		link := e.Attr("href")
@@ -93,15 +93,8 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 		}
 		pLinkSource := strings.Split(link, "?")
 		pLink := strings.Split(pLinkSource[0], "/")
-		//https://lk.platformaofd.ru/web/auth/cheques/details/<id>/<date>/<fp>?date=28.11.2019+17%3A42
-		//https://lk.platformaofd.ru/web/noauth/cheque/id?id=<id>&date=<date>&fp=<fp>
 		cLink := fmt.Sprintf("/web/noauth/cheque/id?id=%s&date=%s&fp=%s", pLink[5], pLink[6], pLink[7])
-		products, _ := pf.getCheck(check, cLink)
-		//fd, _ := pf.getFd(check, cLink)
-		id, err := strconv.Atoi(pLink[5])
-		if err != nil {
-			log.Printf("%v", err)
-		}
+		checkNumber, products, _ := pf.getCheck(check, cLink)
 
 		if len(products) > 0 {
 			totalPrice, err := strconv.ParseFloat(products[0].TotalPrice, 64)
@@ -109,7 +102,7 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 				log.Printf("%v", err)
 			}
 			receipt := Receipt{
-				ID:       id,
+				ID:       checkNumber,
 				FP:       pLink[7],
 				FD:       products[0].FD,
 				Date:     pLink[6],
@@ -132,7 +125,6 @@ func (pf *platformOfd) getChecksLink(c *colly.Collector, startDate time.Time, en
 
 func (pf *platformOfd) getFd(c *colly.Collector, link string) (fd string, err error) {
 	c.OnHTML("div.check-product-name", func(e *colly.HTMLElement) {
-		fmt.Println(e.Text)
 		fd = e.Attr("src")
 	})
 	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru%s", link))
@@ -142,7 +134,14 @@ func (pf *platformOfd) getFd(c *colly.Collector, link string) (fd string, err er
 	return fd, nil
 }
 
-func (pf *platformOfd) getCheck(c *colly.Collector, link string) (product []Product, err error) {
+func (pf *platformOfd) getCheck(c *colly.Collector, link string) (checkNumber int, product []Product, err error) {
+	c.OnHTML("h1.check-headline>span", func(e *colly.HTMLElement) {
+		checkNumber, err = strconv.Atoi(e.Text)
+		if err != nil {
+			log.Printf("%v", err)
+		}
+	})
+
 	c.OnHTML("div", func(e *colly.HTMLElement) {
 		pr := Product{}
 		e.ForEach("div.check-product-name", func(i int, e *colly.HTMLElement) {
@@ -171,8 +170,8 @@ func (pf *platformOfd) getCheck(c *colly.Collector, link string) (product []Prod
 	link = strings.Replace(link, " ", "%20", -1)
 	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru%s", link))
 	if err != nil {
-		return product, err
+		return checkNumber, product, err
 	}
 
-	return product, nil
+	return checkNumber, product, nil
 }
