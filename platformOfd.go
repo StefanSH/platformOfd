@@ -135,16 +135,32 @@ func (pf *platformOfd) getFd(c *colly.Collector, link string) (fd string, err er
 }
 
 func (pf *platformOfd) getCheck(c *colly.Collector, link string) (checkNumber int, product []Product, err error) {
+	pr := Product{}
 	c.OnHTML("h1.check-headline>span", func(e *colly.HTMLElement) {
 		checkNumber, err = strconv.Atoi(e.Text)
 		if err != nil {
 			log.Printf("%v", err)
 		}
 	})
+	c.OnHTML("div.cheque__section.cheque__kkt-info > div:nth-child(3) > p:nth-child(2)", func(e *colly.HTMLElement) {
+		pr.FD = e.Text
+	})
+	c.OnHTML("div.cheque__section.cheque__kkt-info > div:nth-child(4) > p:nth-child(2)", func(e *colly.HTMLElement) {
+		pr.FP = e.Text
+	})
+	c.OnHTML("div.cheque__section.cheque__kkt-info > div:nth-child(1) > p:nth-child(2)", func(e *colly.HTMLElement) {
+		pr.FN = e.Text
+	})
 
-	c.OnHTML("div", func(e *colly.HTMLElement) {
-		pr := Product{}
-		e.ForEach("div.check-product-name", func(i int, e *colly.HTMLElement) {
+	c.OnHTML("div.cheque__section.cheque__summary.bottom-medium_large > div.cheque__summary-header > h4:nth-child(2)", func(e *colly.HTMLElement) {
+		text := e.Text
+		text = strings.Replace(text, "\n", "", -1)
+		text = strings.Replace(text, "=", "", -1)
+		pr.TotalPrice = strings.Replace(text, " ", "", -1)
+	})
+
+	c.OnHTML("ol.cheque__products-list", func(e *colly.HTMLElement) {
+		e.ForEach(".cheque__product-title", func(i int, e *colly.HTMLElement) {
 			productName := e.Text
 			pr.Name = productName
 		})
@@ -168,6 +184,7 @@ func (pf *platformOfd) getCheck(c *colly.Collector, link string) (checkNumber in
 
 	link = strings.Replace(link, ":", "%3A", -1)
 	link = strings.Replace(link, " ", "%20", -1)
+	log.Println(fmt.Sprintf("https://lk.platformaofd.ru%s", link))
 	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru%s", link))
 	if err != nil {
 		return checkNumber, product, err
