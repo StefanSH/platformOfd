@@ -184,7 +184,6 @@ func (pf *platformOfd) getCheck(c *colly.Collector, link string) (checkNumber in
 
 	link = strings.Replace(link, ":", "%3A", -1)
 	link = strings.Replace(link, " ", "%20", -1)
-	log.Println(fmt.Sprintf("https://lk.platformaofd.ru%s", link))
 	err = c.Visit(fmt.Sprintf("https://lk.platformaofd.ru%s", link))
 	if err != nil {
 		return checkNumber, product, err
