@@ -142,40 +142,43 @@ func (pf *platformOfd) getCheck(c *colly.Collector, link string) (checkNumber in
 			log.Printf("%v", err)
 		}
 	})
+	var fd, fp, fn, tp, time string
 	c.OnHTML("div.cheque__section.cheque__kkt-info > div:nth-child(3) > p:nth-child(2)", func(e *colly.HTMLElement) {
-		pr.FD = e.Text
+		fd = e.Text
 	})
 	c.OnHTML("div.cheque__section.cheque__kkt-info > div:nth-child(4) > p:nth-child(2)", func(e *colly.HTMLElement) {
-		pr.FP = e.Text
+		fp = e.Text
 	})
 	c.OnHTML("div.cheque__section.cheque__kkt-info > div:nth-child(1) > p:nth-child(2)", func(e *colly.HTMLElement) {
-		pr.FN = e.Text
+		fn = e.Text
+	})
+	c.OnHTML("div.cheque__section.cheque__shop-info > div:nth-child(1) > p:nth-child(2)", func(e *colly.HTMLElement) {
+		time = e.Text
 	})
 
 	c.OnHTML("div.cheque__section.cheque__summary.bottom-medium_large > div.cheque__summary-header > h4:nth-child(2)", func(e *colly.HTMLElement) {
 		text := e.Text
 		text = strings.Replace(text, "\n", "", -1)
 		text = strings.Replace(text, "=", "", -1)
-		pr.TotalPrice = strings.Replace(text, " ", "", -1)
+		tp = strings.Replace(text, " ", "", -1)
 	})
 
 	c.OnHTML("ol.cheque__products-list", func(e *colly.HTMLElement) {
-		e.ForEach(".cheque__product-title", func(i int, e *colly.HTMLElement) {
-			productName := e.Text
+		e.ForEach(".cheque__produts-item", func(i int, e *colly.HTMLElement) {
+			productName := e.ChildText("cheque__product-title")
 			pr.Name = productName
-		})
-		e.ForEach("div.check-qr>img", func(i int, e *colly.HTMLElement) {
-			u, err := url.Parse(e.Attr("src"))
-			if err != nil {
-				log.Println(err)
-			}
-
-			query := u.Query()
-			pr.FP = query["fp"][0]
-			pr.FN = query["fn"][0]
-			pr.FD = query["i"][0]
-			pr.TotalPrice = query["s"][0]
-			pr.Time = query["t"][0]
+			parsed := e.ChildText("div.cheque-text_container:nth-child > p:nth-child(2)")
+			qp := strings.Split(parsed, "х")
+			p := qp[0]
+			prPrice := strings.ReplaceAll(p[:len(p)-9], ".", "")
+			pr.Price, _ = strconv.Atoi(prPrice)
+			q := qp[1]
+			pr.Quantity, _ = strconv.Atoi(q[1:])
+			pr.FP = fp
+			pr.FN = fn
+			pr.FD = fd
+			pr.TotalPrice = tp
+			pr.Time = time
 		})
 		if pr.Name != "" {
 			product = append(product, pr)
