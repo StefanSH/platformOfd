@@ -162,12 +162,12 @@ func (pf *platformOfd) getCheck(c *colly.Collector, link string) (checkNumber in
 		text = strings.Replace(text, "=", "", -1)
 		tp = strings.Replace(text, " ", "", -1)
 	})
-
-	c.OnHTML("ol.cheque__products-list", func(e *colly.HTMLElement) {
-		e.ForEach(".cheque__produts-item", func(i int, e *colly.HTMLElement) {
-			productName := e.ChildText("cheque__product-title")
+	c.OnHTML("div.well.cheque > ol.cheque__products-list", func(e *colly.HTMLElement) {
+		e.ForEach("li.cheque__products-item", func(i int, e *colly.HTMLElement) {
+			productName := e.ChildText("h6.cheque__product-title")
 			pr.Name = productName
-			parsed := e.ChildText("div.cheque-text_container:nth-child > p:nth-child(2)")
+			//#content > div.cheque-root > div > div.cheque__main.cheque__content > div.well.cheque > ol > li:nth-child(1) > div:nth-child(3)
+			parsed := e.ChildText("div.cheque-text__container > p:nth-child(2)")
 			qp := strings.Split(parsed, "х")
 			p := qp[0]
 			prPrice := strings.ReplaceAll(p[:len(p)-9], ".", "")
